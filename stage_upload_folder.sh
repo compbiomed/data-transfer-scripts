@@ -46,6 +46,9 @@ else
   then
     echo "File '${inputFile}' does not exist; terminating."
   else
+    echo "Reading input from: '${inputFile}'"
+    echo "Writing symbolic links to: '${outputPath}'"
+    echo
     # Create output path
     mkdir --verbose --parents --mode=2750 "${outputPath}"/
     # Iterate over each row of the input file, staging a symlink to each target
