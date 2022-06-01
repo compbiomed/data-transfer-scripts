@@ -1,0 +1,82 @@
+#!/bin/bash -l
+#$ -S /bin/bash
+#$ -cwd
+#$ -j y
+#$ -m eas
+#$ -N retrieve_SRR_fastq_files
+
+# This script is a wrapper for the `fastq-dump` utility of the SRA Toolkit.
+# It retrieves sequencing reads in FASTQ format (gzipped) from the NCBI
+# Sequencing Read Archive (SRA) for a given set of SRR accession numbers,
+# provided in a newline-delimited input file.  It creates files named with the
+# SRR accession and the sequence (read/mate) number
+# (e.g., `SRRnnnnnnnn_1.fastq.gz`, `SRRnnnnnnnn_2.fastq.gz`, etc.)
+
+# It is intended for use with a cluster running Grid Engine and Environment
+# Modules. It may also be run as a standalone bash script using bash instead of
+# qsub.
+
+# Adam Gower
+
+# Parse command-line arguments
+eval set -- "$(
+  getopt --options=i:o: \
+         --longoptions=input-file:,output-path: \
+         --name "$0" -- "$@"
+)"
+
+while true
+do
+  case "$1" in
+    -i|--input-file)
+      inputFilename="$(readlink --canonicalize "$2")"
+      shift 2 ;;
+    -o|--output-path)
+      outputPath="$(readlink --canonicalize "$2")"
+      shift 2 ;;
+    --)
+      shift
+      break ;;
+    *)
+      echo "Internal error"
+      exit 1 ;;
+  esac
+done
+
+if [[ "${inputFilename}" == "" || "${outputPath}" == "" ]]
+then
+  echo    "Usage:"
+  echo    "  qsub [qsub flags] retrieve_SRR_fastq_files.qsub"
+  echo    "       -i|--input-file [input filename]"
+  echo    "       -o|--output-path [path to FASTQ files]"
+  echo    "Options:"
+  echo -n "  -i, --input-file      "
+  echo    "Path to newline-separated file containing SRR accessions"
+  echo -n "                        "
+  echo    "(e.g., download from 'Accession List' in SRA Run Selector)"
+  echo -n "  -o, --output-path     "
+  echo    "Path where FASTQ files will be written "
+  echo -n "                        "
+  echo    "(will be created if it does not exist)"
+else
+  if [[ ! -e "${inputFilename}" ]]
+  then
+    # If the input file does not exist, print an error message and exit
+    echo "File '${inputFilename}' does not exist; terminating."
+  else
+    # Load and list modules
+    module load sratoolkit
+    module list
+
+    # Iterate over each SRR accession in the file, extracting FASTQ files
+    # directly from SRA, with headers in original format
+    while read accession
+    do
+      echo "Extracting fastq.gz files from ${accession} to: '${outputPath}'"
+      fastq-dump \
+        --origfmt --split-files --gzip \
+        --outdir "${outputPath}" \
+        ${accession}
+    done < "${inputFilename}"
+  fi
+fi
