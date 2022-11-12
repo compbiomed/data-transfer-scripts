@@ -70,7 +70,11 @@ else
 
     # Iterate over each SRR accession in the file, extracting FASTQ files
     # directly from SRA, with headers in original format
-    while read accession
+    # Note: the while loop construct is based on the Stack Overflow post:
+    #       https://stackoverflow.com/questions/12916352#12919766
+    #       It is written this way to handle input files that do not contain
+    #       a terminal newline.
+    while read accession || [ -n "${accession}" ]
     do
       echo "Extracting fastq.gz files from ${accession} to: '${outputPath}'"
       fastq-dump \
